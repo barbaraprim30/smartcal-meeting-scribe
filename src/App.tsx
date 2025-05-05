@@ -24,6 +24,14 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Declare window properties to fix TypeScript errors
+declare global {
+  interface Window {
+    handleLogin: () => void;
+    handleLogout: () => void;
+  }
+}
+
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   

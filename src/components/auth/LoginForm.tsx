@@ -50,12 +50,14 @@ const LoginForm: React.FC = () => {
       // Simulating 2FA verification
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // For demo, any 6-digit code works
-      if (twoFactorCode.length === 6 && /^\d+$/.test(twoFactorCode)) {
+      // For demo, accept 123456 as valid 2FA code
+      if (twoFactorCode === '123456') {
         toast({
           title: "Login Successful",
           description: "Welcome to SmartCal",
         });
+        // Call the global login function to update app state
+        window.handleLogin();
         navigate('/dashboard');
       } else {
         throw new Error('Invalid 2FA code');
