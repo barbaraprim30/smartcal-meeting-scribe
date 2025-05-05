@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 // Auth Pages
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
+import Signup from "./pages/Signup";
 
 // Layout
 import MainLayout from "./components/layout/MainLayout";
@@ -72,6 +73,7 @@ const App = () => {
             {/* Auth Routes - accessible when not authenticated */}
             <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Signup />} />
             
             {/* Protected Routes - require authentication */}
             <Route element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" />}>

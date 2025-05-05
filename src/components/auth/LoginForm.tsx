@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -135,11 +135,19 @@ const LoginForm: React.FC = () => {
           </form>
         )}
       </CardContent>
-      <CardFooter className="flex justify-center">
+      <CardFooter className="flex flex-col gap-2">
         {!showTwoFactor && (
-          <Button variant="link" className="px-0" onClick={() => navigate('/forgot-password')}>
-            Forgot your password?
-          </Button>
+          <>
+            <Button variant="link" className="px-0" onClick={() => navigate('/forgot-password')}>
+              Forgot your password?
+            </Button>
+            <div className="text-sm text-muted-foreground">
+              Don't have an account?{" "}
+              <Link to="/signup" className="text-smartcal-600 hover:underline">
+                Sign Up
+              </Link>
+            </div>
+          </>
         )}
       </CardFooter>
     </Card>
