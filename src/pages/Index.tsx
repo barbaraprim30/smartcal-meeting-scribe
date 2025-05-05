@@ -1,11 +1,25 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Redirect to dashboard or login page based on authentication
+    const isAuthenticated = localStorage.getItem('smartcal_auth');
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
+  }, [navigate]);
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-smartcal-50">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+        <h1 className="text-3xl font-bold mb-4 text-smartcal-700">SmartCal</h1>
+        <p className="text-xl text-smartcal-600">Loading your calendar...</p>
       </div>
     </div>
   );

@@ -1,0 +1,60 @@
+
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { 
+  Calendar, Users, Settings, User, 
+  Clock, LogOut, BarChart3
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const navItems = [
+  { path: '/dashboard', icon: BarChart3, label: 'Dashboard' },
+  { path: '/calendar', icon: Calendar, label: 'Calendar' },
+  { path: '/availability', icon: Clock, label: 'Availability' },
+  { path: '/meetings', icon: Users, label: 'Meetings' },
+  { path: '/profile', icon: User, label: 'Profile' },
+  { path: '/settings', icon: Settings, label: 'Settings' },
+];
+
+const Sidebar = () => {
+  const location = useLocation();
+  
+  return (
+    <div className="h-screen w-64 bg-sidebar border-r border-border flex flex-col">
+      <div className="p-4 border-b border-border">
+        <h1 className="text-2xl font-bold text-smartcal-700">SmartCal</h1>
+        <p className="text-sm text-muted-foreground">Meeting Booking Solution</p>
+      </div>
+      
+      <nav className="flex-1 p-4">
+        <ul className="space-y-2">
+          {navItems.map((item) => (
+            <li key={item.path}>
+              <Link
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+                  location.pathname === item.path
+                    ? "bg-smartcal-500 text-white hover:bg-smartcal-600"
+                    : "text-foreground hover:bg-smartcal-100"
+                )}
+              >
+                <item.icon size={18} />
+                <span>{item.label}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      
+      <div className="p-4 border-t border-border">
+        <button className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors">
+          <LogOut size={18} />
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default Sidebar;

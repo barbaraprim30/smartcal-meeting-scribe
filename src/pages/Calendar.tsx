@@ -1,0 +1,214 @@
+
+import React, { useState } from 'react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
+type Meeting = {
+  id: number;
+  title: string;
+  start: Date;
+  end: Date;
+  calendar: string;
+  attendees: string[];
+  isVirtual: boolean;
+  location?: string;
+};
+
+const Calendar: React.FC = () => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedCalendar, setSelectedCalendar] = useState("all");
+  
+  // Mock meetings data
+  const meetings: Meeting[] = [
+    {
+      id: 1,
+      title: "Weekly Team Meeting",
+      start: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 10, 0),
+      end: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 11, 0),
+      calendar: "work",
+      attendees: ["john@example.com", "sarah@example.com"],
+      isVirtual: true
+    },
+    {
+      id: 2,
+      title: "Client Presentation",
+      start: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 14, 0),
+      end: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 15, 30),
+      calendar: "work",
+      attendees: ["client@example.com", "manager@example.com"],
+      isVirtual: false,
+      location: "Conference Room A"
+    },
+    {
+      id: 3,
+      title: "Dentist Appointment",
+      start: addDays(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 9, 0), 1),
+      end: addDays(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 10, 0), 1),
+      calendar: "personal",
+      attendees: [],
+      isVirtual: false,
+      location: "Dental Clinic"
+    }
+  ];
+
+  // Week view calculation
+  const today = currentDate;
+  const startWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday as start of week
+  const endWeek = endOfWeek(today, { weekStartsOn: 1 });
+  const weekDays = eachDayOfInterval({ start: startWeek, end: endWeek });
+  
+  // Time slots for the day view (7 AM to 8 PM)
+  const timeSlots = Array.from({ length: 14 }, (_, i) => i + 7);
+  
+  // Filter meetings by selected calendar
+  const filteredMeetings = selectedCalendar === "all" 
+    ? meetings 
+    : meetings.filter(meeting => meeting.calendar === selectedCalendar);
+  
+  // Navigation functions
+  const goToPreviousWeek = () => {
+    setCurrentDate(prev => addDays(prev, -7));
+  };
+  
+  const goToNextWeek = () => {
+    setCurrentDate(prev => addDays(prev, 7));
+  };
+  
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+  
+  // Get meetings for a specific day and time
+  const getMeetingsForTimeSlot = (day: Date, hour: number) => {
+    const dayStart = new Date(day.setHours(hour, 0, 0, 0));
+    const dayEnd = new Date(day.setHours(hour, 59, 59, 999));
+    
+    return filteredMeetings.filter(meeting => 
+      meeting.start >= dayStart && meeting.start <= dayEnd
+    );
+  };
+  
+  // Calendar color mapping
+  const calendarColors: Record<string, string> = {
+    work: "bg-smartcal-500",
+    personal: "bg-indigo-500",
+    university: "bg-amber-500"
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
+          <p className="text-muted-foreground">Manage your schedule and meetings</p>
+        </div>
+        <Button className="gap-2">
+          <Plus className="h-4 w-4" />
+          New Meeting
+        </Button>
+      </div>
+      
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={goToPreviousWeek}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" onClick={goToToday}>Today</Button>
+          <Button variant="outline" onClick={goToNextWeek}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <div className="text-lg font-medium">
+            {format(startWeek, "MMM d")} - {format(endWeek, "MMM d, yyyy")}
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+          <Select
+            value={selectedCalendar}
+            onValueChange={setSelectedCalendar}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Calendars" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Calendars</SelectItem>
+              <SelectItem value="work">Work</SelectItem>
+              <SelectItem value="personal">Personal</SelectItem>
+              <SelectItem value="university">University</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="rounded-lg border bg-background">
+        {/* Day headers */}
+        <div className="grid grid-cols-7 border-b">
+          {weekDays.map((day, i) => (
+            <div key={i} className="py-2 text-center">
+              <div className="text-sm font-medium">{format(day, "EEE")}</div>
+              <div className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-full mx-auto mt-1",
+                isSameDay(day, new Date()) && "bg-smartcal-500 text-white"
+              )}>
+                {format(day, "d")}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Time grid */}
+        <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr]">
+          {/* Time slots */}
+          {timeSlots.map(hour => (
+            <React.Fragment key={hour}>
+              {/* Time label */}
+              <div className="border-r border-b py-4 px-2 text-sm text-muted-foreground text-right min-w-20">
+                {hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`}
+              </div>
+              
+              {/* Day cells */}
+              {weekDays.map((day, dayIndex) => {
+                const meetings = getMeetingsForTimeSlot(new Date(day), hour);
+                
+                return (
+                  <div 
+                    key={dayIndex} 
+                    className={cn(
+                      "border-b relative p-1 min-h-[5rem]",
+                      dayIndex < 6 && "border-r"
+                    )}
+                  >
+                    {meetings.map(meeting => (
+                      <div 
+                        key={meeting.id}
+                        className={cn(
+                          "text-xs rounded px-2 py-1 mb-1 text-white overflow-hidden",
+                          calendarColors[meeting.calendar] || "bg-gray-500"
+                        )}
+                      >
+                        <div className="font-medium truncate">{meeting.title}</div>
+                        <div className="truncate">{format(meeting.start, "HH:mm")} - {format(meeting.end, "HH:mm")}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Calendar;
