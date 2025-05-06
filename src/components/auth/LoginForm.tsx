@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -13,7 +15,8 @@ const LoginForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [showTwoFactor, setShowTwoFactor] = useState(false);
-  
+  const [session, setSession] = useState(null);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -21,26 +24,56 @@ const LoginForm: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     
-    try {
-      // Simulating API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // try {
+    //   // Simulating API call
+    //   await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Check if admin user (for demo purposes)
-      if (email === 'admin@smartcal.com' && password === 'admin') {
-        setShowTwoFactor(true);
+    //   // Check if admin user (for demo purposes)
+    //   if (email === 'admin@smartcal.com' && password === 'admin') {
+    //     setShowTwoFactor(true);
+    //   } else {
+    //     throw new Error('Invalid credentials');
+    //   }
+    // } catch (error) {
+    //   toast({
+    //     title: "Login Failed",
+    //     description: "Invalid email or password",
+    //     variant: "destructive"
+    //   });
+    // } finally {
+    //   setIsLoading(false);
+    // }
+
+    e.preventDefault()
+      setIsLoading(true)
+      const { error } = await supabase.auth.signInWithOtp({ email })
+      if (error) {
+        // alert(error.error_description || error.message)
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+
       } else {
-        throw new Error('Invalid credentials');
+         setShowTwoFactor(true);
       }
-    } catch (error) {
-      toast({
-        title: "Login Failed",
-        description: "Invalid email or password",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      setIsLoading(false)
   };
+
+
+  // React.useEffect(() => {
+  //   supabase.auth.getSession().then(({ data: { session } }) => {
+  //     setSession(session)
+  //   })
+  //   const {
+  //     data: { subscription },
+  //   } = supabase.auth.onAuthStateChange((_event, session) => {
+  //     setSession(session)
+  //   })
+  //   return () => subscription.unsubscribe()
+  // }, [])
+
 
   const handleTwoFactorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

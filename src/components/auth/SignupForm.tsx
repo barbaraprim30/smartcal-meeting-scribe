@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { EyeIcon, EyeOffIcon, UserIcon, MailIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const SignupForm: React.FC = () => {
   const [name, setName] = useState('');
@@ -38,15 +39,31 @@ const SignupForm: React.FC = () => {
       // Simulating API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      toast({
-        title: "Registration Successful",
-        description: "Your account has been created and is pending approval.",
-      });
-      
-      // Redirect to login page after successful signup
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      })
+
+      if(error) {
+
+        toast({
+          title: "Registration Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+
+      } else {
+        
+          toast({
+            title: "Registration Successful",
+            description: "Your account has been created and is pending approval.",
+          });
+          // Redirect to login page after successful signup
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+      }
+    
     } catch (error) {
       toast({
         title: "Registration Failed",
