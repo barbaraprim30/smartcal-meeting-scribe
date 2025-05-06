@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import JoinMeetingDialog from '@/components/meeting/JoinMeetingDialog';
 
 type Meeting = {
   id: string;
@@ -37,6 +38,8 @@ type Meeting = {
 
 const Meetings: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   
   // Mock meetings data
   const meetings: Meeting[] = [
@@ -91,6 +94,11 @@ const Meetings: React.FC = () => {
   // Handle filter changes
   const handleFilterChange = (filter: string) => {
     console.log('Filter changed:', filter);
+  };
+  
+  const handleJoinMeeting = (meeting: Meeting) => {
+    setSelectedMeeting(meeting);
+    setIsJoinDialogOpen(true);
   };
   
   return (
@@ -227,7 +235,7 @@ const Meetings: React.FC = () => {
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button variant="outline" size="sm">Edit</Button>
-                <Button size="sm">Join Meeting</Button>
+                <Button size="sm" onClick={() => handleJoinMeeting(meeting)}>Join Meeting</Button>
               </CardFooter>
             </Card>
           ))}
@@ -283,6 +291,19 @@ const Meetings: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Join Meeting Dialog */}
+      <JoinMeetingDialog 
+        isOpen={isJoinDialogOpen} 
+        onClose={() => setIsJoinDialogOpen(false)} 
+        meeting={selectedMeeting ? {
+          id: parseInt(selectedMeeting.id),
+          title: selectedMeeting.title,
+          isVirtual: selectedMeeting.isVirtual,
+          platform: selectedMeeting.platform,
+          location: selectedMeeting.location,
+        } : undefined} 
+      />
     </div>
   );
 };
