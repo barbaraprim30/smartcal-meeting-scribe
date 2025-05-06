@@ -11,6 +11,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import MeetingDialog from '@/components/meeting/MeetingDialog';
+import JoinMeetingDialog from '@/components/meeting/JoinMeetingDialog';
 
 type Meeting = {
   id: number;
@@ -21,14 +24,21 @@ type Meeting = {
   attendees: string[];
   isVirtual: boolean;
   location?: string;
+  platform?: string;
 };
 
 const Calendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedCalendar, setSelectedCalendar] = useState("all");
+  const [isNewMeetingDialogOpen, setIsNewMeetingDialogOpen] = useState(false);
+  const [isJoinMeetingDialogOpen, setIsJoinMeetingDialogOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  const { toast } = useToast();
   
   // Mock meetings data
-  const meetings: Meeting[] = [
+  const [meetings, setMeetings] = useState<Meeting[]>([
     {
       id: 1,
       title: "Weekly Team Meeting",
@@ -36,7 +46,8 @@ const Calendar: React.FC = () => {
       end: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 11, 0),
       calendar: "work",
       attendees: ["john@example.com", "sarah@example.com"],
-      isVirtual: true
+      isVirtual: true,
+      platform: "Zoom"
     },
     {
       id: 2,
@@ -58,7 +69,7 @@ const Calendar: React.FC = () => {
       isVirtual: false,
       location: "Dental Clinic"
     }
-  ];
+  ]);
 
   // Week view calculation
   const today = currentDate;
@@ -87,10 +98,36 @@ const Calendar: React.FC = () => {
     setCurrentDate(new Date());
   };
   
+  // Handle opening new meeting dialog
+  const handleNewMeeting = (day?: Date) => {
+    if (day) {
+      setSelectedDate(day);
+    } else {
+      setSelectedDate(currentDate);
+    }
+    setIsNewMeetingDialogOpen(true);
+  };
+  
+  // Handle meeting creation
+  const handleMeetingCreated = () => {
+    // In a real application, this would fetch the latest meetings
+    // For demo, we'll just show a toast
+    toast({
+      title: "Success",
+      description: "Your meeting has been added to the calendar"
+    });
+  };
+  
+  // Handle joining a meeting
+  const handleJoinMeeting = (meeting: Meeting) => {
+    setSelectedMeeting(meeting);
+    setIsJoinMeetingDialogOpen(true);
+  };
+  
   // Get meetings for a specific day and time
   const getMeetingsForTimeSlot = (day: Date, hour: number) => {
-    const dayStart = new Date(day.setHours(hour, 0, 0, 0));
-    const dayEnd = new Date(day.setHours(hour, 59, 59, 999));
+    const dayStart = new Date(new Date(day).setHours(hour, 0, 0, 0));
+    const dayEnd = new Date(new Date(day).setHours(hour, 59, 59, 999));
     
     return filteredMeetings.filter(meeting => 
       meeting.start >= dayStart && meeting.start <= dayEnd
@@ -111,7 +148,7 @@ const Calendar: React.FC = () => {
           <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
           <p className="text-muted-foreground">Manage your schedule and meetings</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => handleNewMeeting()}>
           <Plus className="h-4 w-4" />
           New Meeting
         </Button>
@@ -154,7 +191,11 @@ const Calendar: React.FC = () => {
         {/* Day headers */}
         <div className="grid grid-cols-7 border-b">
           {weekDays.map((day, i) => (
-            <div key={i} className="py-2 text-center">
+            <div 
+              key={i} 
+              className="py-2 text-center cursor-pointer hover:bg-muted/50" 
+              onClick={() => handleNewMeeting(day)}
+            >
               <div className="text-sm font-medium">{format(day, "EEE")}</div>
               <div className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-full mx-auto mt-1",
@@ -178,23 +219,32 @@ const Calendar: React.FC = () => {
               
               {/* Day cells */}
               {weekDays.map((day, dayIndex) => {
-                const meetings = getMeetingsForTimeSlot(new Date(day), hour);
+                const cellMeetings = getMeetingsForTimeSlot(new Date(day), hour);
                 
                 return (
                   <div 
                     key={dayIndex} 
                     className={cn(
-                      "border-b relative p-1 min-h-[5rem]",
+                      "border-b relative p-1 min-h-[5rem] cursor-pointer hover:bg-muted/20",
                       dayIndex < 6 && "border-r"
                     )}
+                    onClick={() => {
+                      const clickedDay = new Date(day);
+                      clickedDay.setHours(hour);
+                      handleNewMeeting(clickedDay);
+                    }}
                   >
-                    {meetings.map(meeting => (
+                    {cellMeetings.map(meeting => (
                       <div 
                         key={meeting.id}
                         className={cn(
-                          "text-xs rounded px-2 py-1 mb-1 text-white overflow-hidden",
+                          "text-xs rounded px-2 py-1 mb-1 text-white overflow-hidden cursor-pointer transition-opacity hover:opacity-90",
                           calendarColors[meeting.calendar] || "bg-gray-500"
                         )}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent triggering the parent onClick
+                          handleJoinMeeting(meeting);
+                        }}
                       >
                         <div className="font-medium truncate">{meeting.title}</div>
                         <div className="truncate">{format(meeting.start, "HH:mm")} - {format(meeting.end, "HH:mm")}</div>
@@ -207,6 +257,22 @@ const Calendar: React.FC = () => {
           ))}
         </div>
       </div>
+      
+      {/* Meeting Dialogs */}
+      <MeetingDialog 
+        isOpen={isNewMeetingDialogOpen}
+        onClose={() => setIsNewMeetingDialogOpen(false)}
+        selectedDate={selectedDate}
+        onMeetingCreated={handleMeetingCreated}
+      />
+      
+      {selectedMeeting && (
+        <JoinMeetingDialog
+          isOpen={isJoinMeetingDialogOpen}
+          onClose={() => setIsJoinMeetingDialogOpen(false)}
+          meeting={selectedMeeting}
+        />
+      )}
     </div>
   );
 };
