@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole } from '@/hooks/useUserRole';
 import {
   Table,
   TableBody,
@@ -26,6 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import EditUserDialog from '@/components/user/EditUserDialog';
 
 type User = {
   id: string;
@@ -39,6 +41,7 @@ type User = {
 
 const Settings: React.FC = () => {
   const { toast } = useToast();
+  const { isAdmin, loading } = useUserRole();
   
   // Mock users data
   const [users, setUsers] = useState<User[]>([
@@ -88,6 +91,10 @@ const Settings: React.FC = () => {
     role: 'user',
     calendars: 3,
   });
+
+  // State for user editing
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
   // Handle new user form change
   const handleNewUserChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,6 +134,19 @@ const Settings: React.FC = () => {
       calendars: 3,
     });
   };
+
+  // Handle edit user
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setIsEditDialogOpen(true);
+  };
+
+  // Save edited user
+  const saveEditedUser = (updatedUser: User) => {
+    setUsers(prev => prev.map(user => 
+      user.id === updatedUser.id ? updatedUser : user
+    ));
+  };
   
   // Delete user
   const deleteUser = (id: string) => {
@@ -163,6 +183,25 @@ const Settings: React.FC = () => {
       description: "General settings have been updated",
     });
   };
+
+  // If not admin and still loading, show nothing
+  if (!isAdmin && !loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Restricted</CardTitle>
+            <CardDescription>
+              You don't have permission to access the settings page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p>This page is only available to administrators.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
@@ -306,7 +345,7 @@ const Settings: React.FC = () => {
                           <Button variant="ghost" size="sm" onClick={() => toggleUserRole(user.id)}>
                             {user.role === 'admin' ? 'Make User' : 'Make Admin'}
                           </Button>
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => deleteUser(user.id)}>
@@ -515,6 +554,14 @@ const Settings: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit User Dialog */}
+      <EditUserDialog
+        user={editingUser}
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        onSave={saveEditedUser}
+      />
     </div>
   );
 };

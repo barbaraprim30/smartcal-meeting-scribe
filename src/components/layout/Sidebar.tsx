@@ -3,27 +3,45 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Calendar, Users, Settings, User, 
-  Clock, LogOut, BarChart3
+  Clock, LogOut, BarChart3, Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const navItems = [
-  { path: '/dashboard', icon: BarChart3, label: 'Dashboard' },
-  { path: '/calendar', icon: Calendar, label: 'Calendar' },
-  { path: '/availability', icon: Clock, label: 'Availability' },
-  { path: '/meetings', icon: Users, label: 'Meetings' },
-  { path: '/profile', icon: User, label: 'Profile' },
-  { path: '/settings', icon: Settings, label: 'Settings' },
-];
+import { useUserRole } from '@/hooks/useUserRole';
 
 const Sidebar = () => {
   const location = useLocation();
+  const { isAdmin } = useUserRole();
+  
+  // Common nav items for all users
+  const commonNavItems = [
+    { path: '/dashboard', icon: BarChart3, label: 'Dashboard' },
+    { path: '/calendar', icon: Calendar, label: 'Calendar' },
+    { path: '/availability', icon: Clock, label: 'Availability' },
+    { path: '/meetings', icon: Users, label: 'Meetings' },
+    { path: '/profile', icon: User, label: 'Profile' },
+  ];
+  
+  // Admin-only nav items
+  const adminNavItems = [
+    { path: '/settings', icon: Settings, label: 'Settings' },
+  ];
+  
+  // Combine nav items based on user role
+  const navItems = isAdmin 
+    ? [...commonNavItems, ...adminNavItems]
+    : commonNavItems;
   
   return (
     <div className="h-screen w-64 bg-sidebar border-r border-border flex flex-col">
       <div className="p-4 border-b border-border">
         <h1 className="text-2xl font-bold text-smartcal-700">SmartCal</h1>
         <p className="text-sm text-muted-foreground">Meeting Booking Solution</p>
+        {isAdmin && (
+          <div className="mt-1 flex items-center gap-1 text-xs text-primary">
+            <Shield className="h-3 w-3" />
+            <span>Admin Access</span>
+          </div>
+        )}
       </div>
       
       <nav className="flex-1 p-4">

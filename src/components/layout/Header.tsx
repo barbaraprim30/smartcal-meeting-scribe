@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Bell, Moon, Sun } from 'lucide-react';
+import { Bell, Moon, Shield, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface HeaderProps {
   toggleTheme: () => void;
@@ -17,11 +18,21 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ toggleTheme, isDarkTheme }) => {
+  const { isAdmin } = useUserRole();
+  
   return (
     <header className="bg-background border-b border-border p-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center">
-          <h2 className="text-xl font-semibold">Welcome, Admin</h2>
+          <h2 className="text-xl font-semibold">
+            Welcome, {isAdmin ? 'Admin' : 'User'}
+            {isAdmin && (
+              <span className="inline-flex items-center ml-2 text-sm text-primary">
+                <Shield className="h-4 w-4 mr-1" />
+                Admin Access
+              </span>
+            )}
+          </h2>
         </div>
         
         <div className="flex items-center gap-4">
@@ -60,7 +71,7 @@ const Header: React.FC<HeaderProps> = ({ toggleTheme, isDarkTheme }) => {
           </DropdownMenu>
           
           <div className="h-8 w-8 rounded-full bg-smartcal-500 text-white flex items-center justify-center">
-            A
+            {isAdmin ? 'A' : 'U'}
           </div>
         </div>
       </div>
