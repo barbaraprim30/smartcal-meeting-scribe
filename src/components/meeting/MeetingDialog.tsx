@@ -70,22 +70,28 @@ const MeetingDialog: React.FC<MeetingDialogProps> = ({
     const endDate = new Date(selectedDate);
     const [endHour, endMinute] = endTime.split(':').map(Number);
     endDate.setHours(endHour, endMinute, 0);
+
+    // Get current user
+    const { data: { session } } = await supabase.auth.getSession();
     
-    // For now, we'll just mock creating a meeting since we haven't set up the Supabase tables
-    // You would normally insert into a "meetings" table
     try {
-      // Mock saving to database - this is where you would add Supabase code
-      console.log("Creating new meeting:", {
+      // Create meeting in Supabase
+      const { error } = await supabase.from('meetings').insert({
         title,
-        start: startDate,
-        end: endDate,
-        calendar: meetingType,
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        calendar_type: meetingType,
         attendees: attendees.split(',').map(email => email.trim()),
-        isVirtual,
+        is_virtual: isVirtual,
         location: isVirtual ? undefined : location,
         platform: isVirtual ? location : undefined,
-        description
+        description,
+        created_by: session?.user?.id
       });
+      
+      if (error) {
+        throw error;
+      }
       
       // Show success toast
       toast({
@@ -101,11 +107,11 @@ const MeetingDialog: React.FC<MeetingDialogProps> = ({
       if (onMeetingCreated) {
         onMeetingCreated();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating meeting:", error);
       toast({
         title: "Error",
-        description: "Failed to create meeting. Please try again.",
+        description: error.message || "Failed to create meeting. Please try again.",
         variant: "destructive"
       });
     } finally {

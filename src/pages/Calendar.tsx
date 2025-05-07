@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import MeetingDialog from '@/components/meeting/MeetingDialog';
 import JoinMeetingDialog from '@/components/meeting/JoinMeetingDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 type Meeting = {
   id: number;
@@ -34,42 +34,66 @@ const Calendar: React.FC = () => {
   const [isJoinMeetingDialogOpen, setIsJoinMeetingDialogOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const { toast } = useToast();
-  
-  // Mock meetings data
-  const [meetings, setMeetings] = useState<Meeting[]>([
-    {
-      id: 1,
-      title: "Weekly Team Meeting",
-      start: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 10, 0),
-      end: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 11, 0),
-      calendar: "work",
-      attendees: ["john@example.com", "sarah@example.com"],
-      isVirtual: true,
-      platform: "Zoom"
-    },
-    {
-      id: 2,
-      title: "Client Presentation",
-      start: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 14, 0),
-      end: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 15, 30),
-      calendar: "work",
-      attendees: ["client@example.com", "manager@example.com"],
-      isVirtual: false,
-      location: "Conference Room A"
-    },
-    {
-      id: 3,
-      title: "Dentist Appointment",
-      start: addDays(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 9, 0), 1),
-      end: addDays(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 10, 0), 1),
-      calendar: "personal",
-      attendees: [],
-      isVirtual: false,
-      location: "Dental Clinic"
-    }
-  ]);
+
+  // Fetch meetings from Supabase
+  useEffect(() => {
+    const fetchMeetings = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('meetings')
+          .select('*');
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          // Transform data from Supabase format to our Meeting type
+          const transformedMeetings: Meeting[] = data.map(meeting => ({
+            id: meeting.id,
+            title: meeting.title,
+            start: new Date(meeting.start_time),
+            end: new Date(meeting.end_time),
+            calendar: meeting.calendar_type || 'work',
+            attendees: meeting.attendees || [],
+            isVirtual: meeting.is_virtual,
+            location: meeting.location,
+            platform: meeting.platform
+          }));
+
+          setMeetings(transformedMeetings);
+        }
+      } catch (error) {
+        console.error('Error fetching meetings:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load meetings.',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMeetings();
+    
+    // Set up real-time subscription for meetings updates
+    const meetingsSubscription = supabase
+      .channel('public:meetings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => {
+        fetchMeetings();
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(meetingsSubscription);
+    };
+  }, [toast]);
 
   // Week view calculation
   const today = currentDate;
@@ -110,8 +134,6 @@ const Calendar: React.FC = () => {
   
   // Handle meeting creation
   const handleMeetingCreated = () => {
-    // In a real application, this would fetch the latest meetings
-    // For demo, we'll just show a toast
     toast({
       title: "Success",
       description: "Your meeting has been added to the calendar"

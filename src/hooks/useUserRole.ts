@@ -12,18 +12,26 @@ export const useUserRole = () => {
     const checkUserRole = async () => {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      console.log(session, "session info")
+      
       if (!session) {
-        setRole('admin');
+        setRole('user');
         setLoading(false);
         return;
       }
 
-      // In a real application, this would check the user's role in the database
-      // For now, we'll use a hardcoded admin email for demonstration
-      const isAdmin = true;
-      setRole(isAdmin ? 'admin' : 'user');
-      setLoading(false);
+      try {
+        // Check if user exists in user_roles table with admin role
+        // For now, we'll use a simple approach where specific emails are admins
+        // In a production app, you would have a proper roles table
+        const adminEmails = ['admin@smartcal.com'];
+        const isAdmin = adminEmails.includes(session.user.email || '');
+        setRole(isAdmin ? 'admin' : 'user');
+      } catch (error) {
+        console.error("Error checking user role:", error);
+        setRole('user'); // Default to user on error
+      } finally {
+        setLoading(false);
+      }
     };
 
     checkUserRole();

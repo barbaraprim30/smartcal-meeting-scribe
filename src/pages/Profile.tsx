@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,23 +8,26 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Profile: React.FC = () => {
   const { toast } = useToast();
   
   // Profile state
   const [profile, setProfile] = useState({
-    name: 'John Doe',
-    email: 'john@example.com',
-    alias: 'johndoe',
-    bio: 'Senior Product Manager with 5+ years of experience in SaaS products. Specialized in user-centric design and agile methodologies.',
+    name: '',
+    email: '',
+    alias: '',
+    bio: '',
     timeZone: 'America/New_York',
   });
   
   // Avatar state
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Password state
   const [passwordData, setPasswordData] = useState({
@@ -33,6 +35,71 @@ const Profile: React.FC = () => {
     newPassword: '',
     confirmPassword: '',
   });
+
+  // Fetch user profile data
+  useEffect(() => {
+    const getProfile = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          toast({
+            title: "Error",
+            description: "You must be logged in to view your profile",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Set email from auth
+        setProfile(prev => ({
+          ...prev,
+          email: session.user.email || ''
+        }));
+
+        // Fetch profile data
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
+
+        if (profileData) {
+          setProfile(prev => ({
+            ...prev,
+            name: profileData.full_name || '',
+            alias: profileData.username || '',
+            bio: profileData.bio || '',
+            timeZone: profileData.time_zone || 'America/New_York',
+          }));
+
+          // Set avatar if it exists
+          if (profileData.avatar_url) {
+            setAvatarUrl(profileData.avatar_url);
+          }
+        }
+
+      } catch (error) {
+        console.error("Error loading profile:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load profile data",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    getProfile();
+  }, [toast]);
   
   // Handle profile updates
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -69,29 +136,106 @@ const Profile: React.FC = () => {
   const handleAvatarUpload = async () => {
     if (!avatarFile) return;
     
-    setIsUploading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast({
-      title: "Profile Picture Updated",
-      description: "Your new profile picture has been saved",
-    });
-    
-    setIsUploading(false);
+    try {
+      setIsUploading(true);
+      
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
+      
+      // Upload to Supabase Storage
+      const fileName = `avatar-${session.user.id}-${Date.now()}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, avatarFile);
+        
+      if (uploadError) {
+        throw uploadError;
+      }
+      
+      // Get public URL
+      const { data: publicUrlData } = await supabase.storage
+        .from('avatars')
+        .getPublicUrl(uploadData.path);
+        
+      const avatarUrl = publicUrlData.publicUrl;
+      
+      // Update profile with avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', session.user.id);
+        
+      if (updateError) {
+        throw updateError;
+      }
+      
+      // Update state
+      setAvatarUrl(avatarUrl);
+      
+      toast({
+        title: "Profile Picture Updated",
+        description: "Your new profile picture has been saved",
+      });
+      
+    } catch (error: any) {
+      console.error("Error uploading avatar:", error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload profile picture",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
   
   // Save profile
-  const saveProfile = () => {
-    toast({
-      title: "Profile Updated",
-      description: "Your profile information has been saved",
-    });
+  const saveProfile = async () => {
+    try {
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
+      
+      // Update profile
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: session.user.id,
+          full_name: profile.name,
+          username: profile.alias,
+          bio: profile.bio,
+          time_zone: profile.timeZone,
+          updated_at: new Date().toISOString()
+        });
+        
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been saved",
+      });
+      
+    } catch (error: any) {
+      console.error("Error saving profile:", error);
+      toast({
+        title: "Save Failed",
+        description: error.message || "Failed to save profile",
+        variant: "destructive"
+      });
+    }
   };
   
   // Update password
-  const updatePassword = () => {
+  const updatePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
         title: "Passwords Don't Match",
@@ -110,18 +254,44 @@ const Profile: React.FC = () => {
       return;
     }
     
-    toast({
-      title: "Password Updated",
-      description: "Your password has been changed successfully",
-    });
-    
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Password Updated",
+        description: "Your password has been changed successfully",
+      });
+      
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      
+    } catch (error: any) {
+      console.error("Error updating password:", error);
+      toast({
+        title: "Password Update Failed",
+        description: error.message || "Failed to update password",
+        variant: "destructive"
+      });
+    }
   };
   
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -132,7 +302,7 @@ const Profile: React.FC = () => {
       <div className="flex items-center space-x-4">
         <div className="relative group">
           <Avatar className="h-24 w-24 border-2 border-border">
-            <AvatarImage src={avatarPreview || undefined} />
+            <AvatarImage src={avatarPreview || avatarUrl || undefined} />
             <AvatarFallback className="text-2xl">
               {profile.name.charAt(0).toUpperCase()}
             </AvatarFallback>
@@ -202,6 +372,7 @@ const Profile: React.FC = () => {
                     type="email" 
                     value={profile.email} 
                     onChange={handleProfileChange}
+                    disabled
                   />
                 </div>
               </div>
