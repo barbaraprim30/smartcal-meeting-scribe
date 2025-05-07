@@ -101,7 +101,6 @@ const Profile: React.FC = () => {
     getProfile();
   }, [toast]);
   
-  // Handle profile updates
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setProfile(prev => ({
@@ -283,7 +282,7 @@ const Profile: React.FC = () => {
       });
     }
   };
-  
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">

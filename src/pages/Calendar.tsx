@@ -16,7 +16,7 @@ import JoinMeetingDialog from '@/components/meeting/JoinMeetingDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 type Meeting = {
-  id: number;
+  id: string;
   title: string;
   start: Date;
   end: Date;
@@ -95,7 +95,6 @@ const Calendar: React.FC = () => {
     };
   }, [toast]);
 
-  // Week view calculation
   const today = currentDate;
   const startWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday as start of week
   const endWeek = endOfWeek(today, { weekStartsOn: 1 });

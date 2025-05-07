@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Users, MapPin, Video } from 'lucide-react';
@@ -75,19 +74,25 @@ const MeetingDialog: React.FC<MeetingDialogProps> = ({
     const { data: { session } } = await supabase.auth.getSession();
     
     try {
+      if (!session) {
+        throw new Error("You must be logged in to create a meeting");
+      }
+      
       // Create meeting in Supabase
-      const { error } = await supabase.from('meetings').insert({
-        title,
-        start_time: startDate.toISOString(),
-        end_time: endDate.toISOString(),
-        calendar_type: meetingType,
-        attendees: attendees.split(',').map(email => email.trim()),
-        is_virtual: isVirtual,
-        location: isVirtual ? undefined : location,
-        platform: isVirtual ? location : undefined,
-        description,
-        created_by: session?.user?.id
-      });
+      const { error } = await supabase
+        .from('meetings')
+        .insert({
+          title,
+          start_time: startDate.toISOString(),
+          end_time: endDate.toISOString(),
+          calendar_type: meetingType,
+          attendees: attendees.split(',').map(email => email.trim()),
+          is_virtual: isVirtual,
+          location: isVirtual ? undefined : location,
+          platform: isVirtual ? location : undefined,
+          description,
+          created_by: session?.user?.id
+        });
       
       if (error) {
         throw error;
