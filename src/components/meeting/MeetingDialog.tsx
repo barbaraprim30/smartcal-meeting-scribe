@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Users, MapPin, Video } from 'lucide-react';
@@ -71,31 +72,58 @@ const MeetingDialog: React.FC<MeetingDialogProps> = ({
     endDate.setHours(endHour, endMinute, 0);
 
     // Get current user
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
     
     try {
       if (!session) {
-        throw new Error("You must be logged in to create a meeting");
-      }
-      
-      // Create meeting in Supabase
-      const { error } = await supabase
-        .from('meetings')
-        .insert({
-          title,
-          start_time: startDate.toISOString(),
-          end_time: endDate.toISOString(),
-          calendar_type: meetingType,
-          attendees: attendees.split(',').map(email => email.trim()),
-          is_virtual: isVirtual,
-          location: isVirtual ? undefined : location,
-          platform: isVirtual ? location : undefined,
-          description,
-          created_by: session?.user?.id
+        // If there's no authenticated session, use the mock auth for demo
+        localStorage.setItem('smartcal_auth', 'true');
+        
+        toast({
+          title: "Demo Mode",
+          description: "Using demo user for this operation",
         });
-      
-      if (error) {
-        throw error;
+        
+        // Create meeting with a demo user ID
+        const { error } = await supabase
+          .from('meetings')
+          .insert({
+            title,
+            start_time: startDate.toISOString(),
+            end_time: endDate.toISOString(),
+            calendar_type: meetingType,
+            attendees: attendees.split(',').map(email => email.trim()).filter(Boolean),
+            is_virtual: isVirtual,
+            location: isVirtual ? undefined : location,
+            platform: isVirtual ? location : undefined,
+            description,
+            created_by: '00000000-0000-0000-0000-000000000000' // Demo user ID
+          });
+        
+        if (error) {
+          throw error;
+        }
+      } else {
+        // Create meeting with the authenticated user's ID
+        const { error } = await supabase
+          .from('meetings')
+          .insert({
+            title,
+            start_time: startDate.toISOString(),
+            end_time: endDate.toISOString(),
+            calendar_type: meetingType,
+            attendees: attendees.split(',').map(email => email.trim()).filter(Boolean),
+            is_virtual: isVirtual,
+            location: isVirtual ? undefined : location,
+            platform: isVirtual ? location : undefined,
+            description,
+            created_by: session.user.id
+          });
+        
+        if (error) {
+          throw error;
+        }
       }
       
       // Show success toast

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
@@ -29,7 +30,7 @@ type Meeting = {
 
 // Type for JoinMeetingDialog component props
 type JoinMeetingProps = {
-  id: string;
+  id: number;
   title: string;
   isVirtual: boolean;
   platform?: string;
@@ -64,7 +65,7 @@ const Calendar: React.FC = () => {
         if (data) {
           // Transform data from Supabase format to our Meeting type
           const transformedMeetings: Meeting[] = data.map(meeting => ({
-            id: meeting.id,
+            id: meeting.id.toString(),
             title: meeting.title,
             start: new Date(meeting.start_time),
             end: new Date(meeting.end_time),
@@ -151,7 +152,7 @@ const Calendar: React.FC = () => {
   // Handle joining a meeting
   const handleJoinMeeting = (meeting: Meeting) => {
     const meetingForDialog: JoinMeetingProps = {
-      id: meeting.id,
+      id: parseInt(meeting.id),
       title: meeting.title,
       isVirtual: meeting.isVirtual,
       platform: meeting.platform,

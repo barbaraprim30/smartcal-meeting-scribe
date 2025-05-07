@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -13,28 +12,43 @@ import { useToast } from '@/hooks/use-toast';
 const Sidebar = () => {
   const location = useLocation();
   const { isAdmin } = useUserRole();
-  console.log(isAdmin, "Isadmin")
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const signOut =  () => {
-    const logout = async () => {
-      const { error } = await supabase.auth.signOut(); console.log(error)
-      if(error) {
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
         toast({
           title: "Logout Failed",
           description: error.message,
           variant: "destructive"
         });
       } else {
+        toast({
+          title: "Logged out successfully",
+          description: "You have been logged out",
+        });
+        
+        // Remove auth from localStorage
+        localStorage.removeItem('smartcal_auth');
+        
+        // Navigate to login page after a short delay
         setTimeout(() => {
           navigate('/login');
-        }, 2000);
+        }, 1000);
       }
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout Failed",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
     }
-    logout();
+  };
   
-  }
   // Common nav items for all users
   const commonNavItems = [
     { path: '/dashboard', icon: BarChart3, label: 'Dashboard' },
