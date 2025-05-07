@@ -27,12 +27,21 @@ type Meeting = {
   platform?: string;
 };
 
+// Type for JoinMeetingDialog component props
+type JoinMeetingProps = {
+  id: string;
+  title: string;
+  isVirtual: boolean;
+  platform?: string;
+  location?: string;
+};
+
 const Calendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedCalendar, setSelectedCalendar] = useState("all");
   const [isNewMeetingDialogOpen, setIsNewMeetingDialogOpen] = useState(false);
   const [isJoinMeetingDialogOpen, setIsJoinMeetingDialogOpen] = useState(false);
-  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [selectedMeeting, setSelectedMeeting] = useState<JoinMeetingProps | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +150,14 @@ const Calendar: React.FC = () => {
   
   // Handle joining a meeting
   const handleJoinMeeting = (meeting: Meeting) => {
-    setSelectedMeeting(meeting);
+    const meetingForDialog: JoinMeetingProps = {
+      id: meeting.id,
+      title: meeting.title,
+      isVirtual: meeting.isVirtual,
+      platform: meeting.platform,
+      location: meeting.location
+    };
+    setSelectedMeeting(meetingForDialog);
     setIsJoinMeetingDialogOpen(true);
   };
   
