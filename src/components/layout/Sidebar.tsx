@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -39,7 +40,7 @@ const Sidebar = () => {
           navigate('/login');
         }, 1000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Logout error:", error);
       toast({
         title: "Logout Failed",
@@ -103,7 +104,10 @@ const Sidebar = () => {
       </nav>
       
       <div className="p-4 border-t border-border">
-        <button className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors" onClick={signOut}>
+        <button 
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors" 
+          onClick={signOut}
+        >
           <LogOut size={18}  />
           <span>Logout</span>
         </button>

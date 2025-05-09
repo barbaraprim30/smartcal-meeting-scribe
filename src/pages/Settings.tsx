@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import EditUserDialog from '@/components/user/EditUserDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 type User = {
   id: string;
@@ -43,45 +44,8 @@ const Settings: React.FC = () => {
   const { toast } = useToast();
   const { isAdmin, loading } = useUserRole();
   
-  // Mock users data
-  const [users, setUsers] = useState<User[]>([
-    { 
-      id: '1', 
-      name: 'John Doe', 
-      email: 'john@example.com', 
-      alias: 'johndoe', 
-      role: 'admin', 
-      status: 'active',
-      calendars: 3
-    },
-    { 
-      id: '2', 
-      name: 'Sarah Smith', 
-      email: 'sarah@example.com', 
-      alias: 'sarahsmith', 
-      role: 'user', 
-      status: 'active',
-      calendars: 3
-    },
-    { 
-      id: '3', 
-      name: 'Michael Johnson', 
-      email: 'michael@example.com', 
-      alias: 'michaelj', 
-      role: 'user', 
-      status: 'active',
-      calendars: 3
-    },
-    { 
-      id: '4', 
-      name: 'Pedro Martinez', 
-      email: 'pedro@example.com', 
-      alias: 'pedrom', 
-      role: 'user', 
-      status: 'active',
-      calendars: 5
-    },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -96,6 +60,60 @@ const Settings: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
+  // Fetch users data from Supabase
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (!isAdmin) return;
+
+      try {
+        setIsLoading(true);
+        
+        // Get users from auth.users via profiles table
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, username, avatar_url');
+          
+        if (profilesError) throw profilesError;
+        
+        // Get user roles information
+        const { data: userRoles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id, role');
+          
+        if (rolesError) throw rolesError;
+        
+        // Transform data to match our User type
+        const usersData: User[] = profiles.map(profile => {
+          // Find role for this user
+          const userRole = userRoles.find(role => role.user_id === profile.id);
+          
+          return {
+            id: profile.id,
+            name: profile.full_name || 'Unnamed User',
+            email: profile.username || 'No Email',
+            alias: profile.username || '',
+            role: userRole?.role === 'admin' ? 'admin' : 'user',
+            status: 'active', // Assuming all users in the database are active
+            calendars: 3, // Default value
+          };
+        });
+        
+        setUsers(usersData);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load users data",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [isAdmin, toast]);
+  
   // Handle new user form change
   const handleNewUserChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -106,33 +124,67 @@ const Settings: React.FC = () => {
   };
   
   // Add new user
-  const addNewUser = () => {
-    const id = `user-${Date.now()}`;
-    const user: User = {
-      id,
-      name: newUser.name,
-      email: newUser.email,
-      alias: newUser.alias,
-      role: newUser.role as 'admin' | 'user',
-      status: 'pending',
-      calendars: newUser.calendars,
-    };
-    
-    setUsers(prev => [...prev, user]);
-    
-    toast({
-      title: "User Created",
-      description: `Invitation sent to ${newUser.email}`,
-    });
-    
-    // Reset form
-    setNewUser({
-      name: '',
-      email: '',
-      alias: '',
-      role: 'user',
-      calendars: 3,
-    });
+  const addNewUser = async () => {
+    try {
+      // In a real application, this would likely use Supabase auth admin APIs
+      // For now, we'll simulate by adding to the profiles table
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([
+          { 
+            full_name: newUser.name,
+            username: newUser.alias,
+            // Note: In a real app, we would need to create the auth user first
+          }
+        ])
+        .select();
+
+      if (error) throw error;
+      
+      if (data && data[0]) {
+        // Add role if needed
+        if (newUser.role === 'admin') {
+          await supabase
+            .from('user_roles')
+            .insert([
+              { user_id: data[0].id, role: 'admin' }
+            ]);
+        }
+        
+        const newUserData: User = {
+          id: data[0].id,
+          name: newUser.name,
+          email: newUser.email,
+          alias: newUser.alias,
+          role: newUser.role as 'admin' | 'user',
+          status: 'pending',
+          calendars: newUser.calendars,
+        };
+        
+        setUsers(prev => [...prev, newUserData]);
+        
+        toast({
+          title: "User Created",
+          description: `Invitation sent to ${newUser.email}`,
+        });
+        
+        // Reset form
+        setNewUser({
+          name: '',
+          email: '',
+          alias: '',
+          role: 'user',
+          calendars: 3,
+        });
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create user",
+        variant: "destructive"
+      });
+    }
   };
 
   // Handle edit user
@@ -142,38 +194,131 @@ const Settings: React.FC = () => {
   };
 
   // Save edited user
-  const saveEditedUser = (updatedUser: User) => {
-    setUsers(prev => prev.map(user => 
-      user.id === updatedUser.id ? updatedUser : user
-    ));
+  const saveEditedUser = async (updatedUser: User) => {
+    try {
+      // Update profile information
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          full_name: updatedUser.name,
+          username: updatedUser.alias
+        })
+        .eq('id', updatedUser.id);
+        
+      if (profileError) throw profileError;
+      
+      // Check if role needs to be updated
+      const currentUser = users.find(u => u.id === updatedUser.id);
+      if (currentUser && currentUser.role !== updatedUser.role) {
+        if (updatedUser.role === 'admin') {
+          // Add admin role
+          await supabase
+            .from('user_roles')
+            .upsert([
+              { user_id: updatedUser.id, role: 'admin' }
+            ]);
+        } else {
+          // Remove admin role
+          await supabase
+            .from('user_roles')
+            .delete()
+            .eq('user_id', updatedUser.id);
+        }
+      }
+      
+      setUsers(prev => prev.map(user => 
+        user.id === updatedUser.id ? updatedUser : user
+      ));
+      
+      toast({
+        title: "User Updated",
+        description: `User ${updatedUser.name} has been updated successfully`,
+      });
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to update user",
+        variant: "destructive"
+      });
+    }
   };
   
   // Delete user
-  const deleteUser = (id: string) => {
-    setUsers(prev => prev.filter(user => user.id !== id));
-    
-    toast({
-      title: "User Deleted",
-      description: "User has been removed from the system",
-    });
+  const deleteUser = async (id: string) => {
+    try {
+      // In a real app with auth, we'd use admin APIs to delete the user
+      // For now, we'll just remove from profiles
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      setUsers(prev => prev.filter(user => user.id !== id));
+      
+      toast({
+        title: "User Deleted",
+        description: "User has been removed from the system",
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive"
+      });
+    }
   };
   
   // Toggle user role
-  const toggleUserRole = (id: string) => {
-    setUsers(prev => prev.map(user => {
-      if (user.id === id) {
-        return {
-          ...user,
-          role: user.role === 'admin' ? 'user' : 'admin'
-        };
+  const toggleUserRole = async (id: string) => {
+    try {
+      const user = users.find(u => u.id === id);
+      if (!user) return;
+      
+      if (user.role === 'admin') {
+        // Remove admin role
+        await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', id);
+          
+        setUsers(prev => prev.map(u => {
+          if (u.id === id) {
+            return { ...u, role: 'user' };
+          }
+          return u;
+        }));
+      } else {
+        // Add admin role
+        await supabase
+          .from('user_roles')
+          .upsert([
+            { user_id: id, role: 'admin' }
+          ]);
+          
+        setUsers(prev => prev.map(u => {
+          if (u.id === id) {
+            return { ...u, role: 'admin' };
+          }
+          return u;
+        }));
       }
-      return user;
-    }));
-    
-    toast({
-      title: "User Role Updated",
-      description: "User permissions have been modified",
-    });
+      
+      toast({
+        title: "User Role Updated",
+        description: "User permissions have been modified",
+      });
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update user role",
+        variant: "destructive"
+      });
+    }
   };
   
   // Save general settings
@@ -305,58 +450,64 @@ const Settings: React.FC = () => {
               </Dialog>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Calendars</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map(user => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.name}
-                        <div className="text-xs text-muted-foreground">{user.alias}</div>
-                      </TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        {user.role === 'admin' ? (
-                          <Badge className="bg-smartcal-600">
-                            <Shield className="h-3 w-3 mr-1" />
-                            Admin
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">User</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{user.calendars}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.status === 'active' ? 'default' : 'outline'}>
-                          {user.status === 'active' ? 'Active' : 'Pending'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Button variant="ghost" size="sm" onClick={() => toggleUserRole(user.id)}>
-                            {user.role === 'admin' ? 'Make User' : 'Make Admin'}
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteUser(user.id)}>
-                            <Trash className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              {isLoading ? (
+                <div className="flex justify-center p-4">
+                  <p>Loading users...</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Calendars</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map(user => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">
+                          {user.name}
+                          <div className="text-xs text-muted-foreground">{user.alias}</div>
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          {user.role === 'admin' ? (
+                            <Badge className="bg-smartcal-600">
+                              <Shield className="h-3 w-3 mr-1" />
+                              Admin
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">User</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{user.calendars}</TableCell>
+                        <TableCell>
+                          <Badge variant={user.status === 'active' ? 'default' : 'outline'}>
+                            {user.status === 'active' ? 'Active' : 'Pending'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button variant="ghost" size="sm" onClick={() => toggleUserRole(user.id)}>
+                              {user.role === 'admin' ? 'Make User' : 'Make Admin'}
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => deleteUser(user.id)}>
+                              <Trash className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -151,8 +151,11 @@ const Calendar: React.FC = () => {
   
   // Handle joining a meeting
   const handleJoinMeeting = (meeting: Meeting) => {
+    // Convert the string ID to a number
+    const meetingId = parseInt(meeting.id);
+    
     const meetingForDialog: JoinMeetingProps = {
-      id: parseInt(meeting.id),
+      id: isNaN(meetingId) ? 0 : meetingId,
       title: meeting.title,
       isVirtual: meeting.isVirtual,
       platform: meeting.platform,

@@ -71,6 +71,11 @@ const MeetingDialog: React.FC<MeetingDialogProps> = ({
     const [endHour, endMinute] = endTime.split(':').map(Number);
     endDate.setHours(endHour, endMinute, 0);
 
+    // Parse attendees and ensure it's an array
+    const attendeesArray = attendees
+      ? attendees.split(',').map(email => email.trim()).filter(Boolean)
+      : [];
+
     // Get current user
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
@@ -93,7 +98,7 @@ const MeetingDialog: React.FC<MeetingDialogProps> = ({
             start_time: startDate.toISOString(),
             end_time: endDate.toISOString(),
             calendar_type: meetingType,
-            attendees: attendees.split(',').map(email => email.trim()).filter(Boolean),
+            attendees: attendeesArray,
             is_virtual: isVirtual,
             location: isVirtual ? undefined : location,
             platform: isVirtual ? location : undefined,
@@ -113,7 +118,7 @@ const MeetingDialog: React.FC<MeetingDialogProps> = ({
             start_time: startDate.toISOString(),
             end_time: endDate.toISOString(),
             calendar_type: meetingType,
-            attendees: attendees.split(',').map(email => email.trim()).filter(Boolean),
+            attendees: attendeesArray,
             is_virtual: isVirtual,
             location: isVirtual ? undefined : location,
             platform: isVirtual ? location : undefined,
