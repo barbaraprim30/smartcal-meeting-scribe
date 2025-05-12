@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Calendar, Users, Settings, User, 
-  Clock, LogOut, BarChart3, Shield
+  Clock, LogOut, BarChart3, Shield, UserCog
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -61,6 +61,7 @@ const Sidebar = () => {
   
   // Admin-only nav items
   const adminNavItems = [
+    { path: '/user-management', icon: UserCog, label: 'User Management' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
   
